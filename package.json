@@ -1,0 +1,31 @@
+{
+  "name": "onboarding-assistant-cli",
+  "version": "0.1.0",
+  "description": "CLI tools for generating and uploading metadata for the Onboarding Assistant",
+  "bin": {
+    "onboarding-assistant": "./bin/cli.js"
+  },
+  "scripts": {
+    "postinstall": "node lib/setup.js"
+  },
+  "keywords": [
+    "onboarding",
+    "assistant",
+    "cli",
+    "metadata",
+    "openai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^11.0.0",
+    "inquirer": "^8.2.5",
+    "ora": "^5.4.1",
+    "python-shell": "^5.0.0",
+    "yaml": "^2.3.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
