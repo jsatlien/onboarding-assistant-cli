@@ -1,7 +1,7 @@
 {
   "name": "onboarding-assistant-cli",
   "version": "0.1.0",
-  "description": "CLI tools for generating and uploading metadata for the Onboarding Assistant",
+  "description": "CLI tools for generating context files for direct upload to OpenAI Assistant",
   "bin": {
     "onboarding-assistant": "./bin/cli.js"
   },
@@ -12,18 +12,25 @@
     "onboarding",
     "assistant",
     "cli",
-    "metadata",
-    "openai"
+    "context",
+    "openai",
+    "retrieval"
   ],
-  "author": "",
+  "author": "Jsatl",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jsatlien/onboarding-assistant-cli"
+  },
+  "homepage": "https://github.com/jsatlien/onboarding-assistant-cli",
+  "bugs": {
+    "url": "https://github.com/jsatlien/onboarding-assistant-cli/issues"
+  },
   "license": "MIT",
   "dependencies": {
     "chalk": "^4.1.2",
     "commander": "^11.0.0",
     "inquirer": "^8.2.5",
-    "ora": "^5.4.1",
-    "python-shell": "^5.0.0",
-    "yaml": "^2.3.1"
+    "ora": "^5.4.1"
   },
   "engines": {
     "node": ">=14.0.0"

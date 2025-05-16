@@ -43,23 +43,31 @@ function findPythonExecutable() {
   return null;
 }
 
-// Find Python executable
-const pythonExecutable = findPythonExecutable();
-if (!pythonExecutable) {
-  console.error(chalk.red('❌ Python is not installed or not in PATH'));
-  console.error(chalk.yellow('Please install Python 3.6+ from https://www.python.org/downloads/'));
-  console.error(chalk.yellow('Make sure to check "Add Python to PATH" during installation'));
-  process.exit(1);
+// We'll check for Python only when needed for legacy commands
+let pythonExecutable = null;
+
+// Function to ensure Python is available for legacy commands
+function ensurePythonAvailable() {
+  if (pythonExecutable === null) {
+    pythonExecutable = findPythonExecutable();
+    if (!pythonExecutable) {
+      console.error(chalk.red('❌ Python is not installed or not in PATH'));
+      console.error(chalk.yellow('Please install Python 3.6+ from https://www.python.org/downloads/'));
+      console.error(chalk.yellow('Make sure to check "Add Python to PATH" during installation'));
+      process.exit(1);
+    }
+  }
+  return pythonExecutable;
 }
 
-// Import the new context generators
+// Import the context generators
 const { generateVueContext } = require('../lib/frontend-context');
 const { generateEFModelContext } = require('../lib/backend-context');
 
 // Define the CLI program
 program
   .name('onboarding-assistant')
-  .description('CLI tools for the Onboarding Assistant - Extract metadata and upload embeddings for RAG')
+  .description('CLI tools for the Onboarding Assistant - Generate context files for direct upload to OpenAI Assistant')
   .version('0.1.0');
 
 // Extract metadata command
@@ -70,6 +78,9 @@ program
   .option('-o, --output-dir <dir>', 'Output directory for metadata JSON files (default: "./output")', './output')
   .action((sourceDir, options) => {
     console.log(chalk.blue('🔍 Extracting metadata from source code...'));
+    
+    // Ensure Python is available for this legacy command
+    const pythonPath = ensurePythonAvailable();
     
     const spinner = ora('Processing files...').start();
     
@@ -83,7 +94,7 @@ program
     const pyshell = new PythonShell(path.join(SCRIPT_DIR, 'metadata_generator.py'), {
       args: [sourceDir, '--output-dir', options.outputDir],
       mode: 'text',
-      pythonPath: pythonExecutable
+      pythonPath: pythonPath
     });
     
     pyshell.on('message', (message) => {
@@ -102,52 +113,7 @@ program
     });
   });
 
-// Upload embeddings command
-program
-  .command('upload')
-  .description('Upload metadata embeddings to OpenAI for RAG context')
-  .option('-c, --config <file>', 'Path to YAML config file with OpenAI credentials (default: "./config/assistant_config.yaml")', './config/assistant_config.yaml')
-  .option('-f, --force', 'Force processing of all files, even if unchanged')
-  .option('-v, --verbose', 'Print verbose output including API calls and responses')
-  .option('-q, --quiet', 'Suppress progress bar and non-error output')
-  .action((options) => {
-    console.log(chalk.blue('📤 Uploading embeddings to OpenAI...'));
-    
-    const spinner = ora('Processing embeddings...').start();
-    
-    // Make sure the config file exists
-    if (!fs.existsSync(options.config)) {
-      spinner.fail(chalk.red(`Config file not found: ${options.config}`));
-      process.exit(1);
-    }
-    
-    // Build the arguments
-    const args = ['--config', options.config];
-    if (options.force) args.push('--force');
-    if (options.verbose) args.push('--verbose');
-    if (options.quiet) args.push('--quiet');
-    
-    // Run the Python script
-    const pyshell = new PythonShell(path.join(SCRIPT_DIR, 'upload_embeddings.py'), {
-      args: args,
-      mode: 'text',
-      pythonPath: pythonExecutable
-    });
-    
-    pyshell.on('message', (message) => {
-      // Update spinner text with progress
-      spinner.text = message;
-    });
-    
-    pyshell.end((err, code, signal) => {
-      if (err) {
-        spinner.fail(chalk.red(`Error uploading embeddings: ${err.message}`));
-        process.exit(1);
-      }
-      
-      spinner.succeed(chalk.green('Embeddings upload complete!'));
-    });
-  });
+// Upload embeddings command has been removed in favor of direct file uploads to OpenAI Assistant
 
 // Init command - create config files
 program
@@ -234,84 +200,7 @@ embedding_format: "openai"
     console.log(chalk.yellow('2. Upload embeddings: onboarding-assistant upload'));
   });
 
-// All-in-one command
-program
-  .command('all')
-  .description('Run the complete workflow: extract metadata from source code and upload embeddings to OpenAI in one step')
-  .argument('<source-dir>', 'Source directory to scan for code files')
-  .option('-o, --output-dir <dir>', 'Output directory for metadata JSON files (default: "./output")', './output')
-  .option('-c, --config <file>', 'Path to YAML config file with OpenAI credentials (default: "./config/assistant_config.yaml")', './config/assistant_config.yaml')
-  .option('-f, --force', 'Force processing of all files, even if unchanged')
-  .action((sourceDir, options) => {
-    console.log(chalk.blue('🚀 Running complete Onboarding Assistant workflow...'));
-    
-    // First extract metadata
-    console.log(chalk.blue('\n🔍 Step 1: Extracting metadata from source code...'));
-    
-    const extractSpinner = ora('Processing files...').start();
-    
-    // Make sure the source directory exists
-    if (!fs.existsSync(sourceDir)) {
-      extractSpinner.fail(chalk.red(`Source directory not found: ${sourceDir}`));
-      process.exit(1);
-    }
-    
-    // Run the metadata extraction script
-    const extractPyshell = new PythonShell(path.join(SCRIPT_DIR, 'metadata_generator.py'), {
-      args: [sourceDir, '--output-dir', options.outputDir],
-      mode: 'text',
-      pythonPath: pythonExecutable
-    });
-    
-    extractPyshell.on('message', (message) => {
-      extractSpinner.text = message;
-    });
-    
-    extractPyshell.end((err, code, signal) => {
-      if (err) {
-        extractSpinner.fail(chalk.red(`Error extracting metadata: ${err.message}`));
-        process.exit(1);
-      }
-      
-      extractSpinner.succeed(chalk.green('Metadata extraction complete!'));
-      
-      // Then upload embeddings
-      console.log(chalk.blue('\n📤 Step 2: Uploading embeddings to OpenAI...'));
-      
-      const uploadSpinner = ora('Processing embeddings...').start();
-      
-      // Make sure the config file exists
-      if (!fs.existsSync(options.config)) {
-        uploadSpinner.fail(chalk.red(`Config file not found: ${options.config}`));
-        process.exit(1);
-      }
-      
-      // Build the arguments
-      const args = ['--config', options.config];
-      if (options.force) args.push('--force');
-      
-      // Run the upload script
-      const uploadPyshell = new PythonShell(path.join(SCRIPT_DIR, 'upload_embeddings.py'), {
-        args: args,
-        mode: 'text',
-        pythonPath: pythonExecutable
-      });
-      
-      uploadPyshell.on('message', (message) => {
-        uploadSpinner.text = message;
-      });
-      
-      uploadPyshell.end((err, code, signal) => {
-        if (err) {
-          uploadSpinner.fail(chalk.red(`Error uploading embeddings: ${err.message}`));
-          process.exit(1);
-        }
-        
-        uploadSpinner.succeed(chalk.green('Embeddings upload complete!'));
-        console.log(chalk.green('\n✅ Onboarding Assistant workflow completed successfully!'));
-      });
-    });
-  });
+// All-in-one command has been removed in favor of direct file uploads to OpenAI Assistant
 
 // Generate frontend context command
 program
@@ -426,6 +315,8 @@ program
       process.exit(1);
     }
   });
+
+// Upload context command has been removed in favor of direct file uploads to OpenAI Assistant
 
 // Parse command line arguments
 program.parse();
