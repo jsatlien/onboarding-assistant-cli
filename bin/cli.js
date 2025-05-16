@@ -7,22 +7,63 @@ const path = require('path');
 const fs = require('fs');
 const ora = require('ora');
 const inquirer = require('inquirer');
+const { execSync } = require('child_process');
 
 // Get the path to the Python scripts
 const SCRIPT_DIR = path.join(__dirname, '..', 'lib', 'python');
 
+// Find Python executable - similar to setup.js
+function findPythonExecutable() {
+  // List of possible Python executable paths on Windows
+  const possiblePythonPaths = [
+    'python',
+    'python3',
+    'py',
+    'C:\\Users\\Jsatl\\AppData\\Local\\Programs\\Python\\Python310\\python.exe',
+    'C:\\Users\\Jsatl\\AppData\\Local\\Programs\\Python\\Python311\\python.exe',
+    'C:\\Users\\Jsatl\\AppData\\Local\\Programs\\Python\\Python312\\python.exe',
+    'C:\\Users\\Jsatl\\AppData\\Local\\Programs\\Python\\Python313\\python.exe',
+    'C:\\Program Files\\Python310\\python.exe',
+    'C:\\Program Files\\Python311\\python.exe',
+    'C:\\Program Files\\Python312\\python.exe',
+    'C:\\Program Files\\Python313\\python.exe'
+  ];
+
+  // Try each possible Python path
+  for (const pythonPath of possiblePythonPaths) {
+    try {
+      execSync(`"${pythonPath}" --version`, { encoding: 'utf8' });
+      return pythonPath;
+    } catch (error) {
+      // Continue to the next path
+    }
+  }
+
+  // If no Python installation found
+  return null;
+}
+
+// Find Python executable
+const pythonExecutable = findPythonExecutable();
+if (!pythonExecutable) {
+  console.error(chalk.red('❌ Python is not installed or not in PATH'));
+  console.error(chalk.yellow('Please install Python 3.6+ from https://www.python.org/downloads/'));
+  console.error(chalk.yellow('Make sure to check "Add Python to PATH" during installation'));
+  process.exit(1);
+}
+
 // Define the CLI program
 program
   .name('onboarding-assistant')
-  .description('CLI tools for the Onboarding Assistant')
+  .description('CLI tools for the Onboarding Assistant - Extract metadata and upload embeddings for RAG')
   .version('0.1.0');
 
 // Extract metadata command
 program
   .command('extract')
-  .description('Extract metadata from source code')
-  .argument('<source-dir>', 'Source directory to scan')
-  .option('-o, --output-dir <dir>', 'Output directory for metadata', './output')
+  .description('Extract metadata from source code files for RAG context')
+  .argument('<source-dir>', 'Source directory to scan for code files')
+  .option('-o, --output-dir <dir>', 'Output directory for metadata JSON files (default: "./output")', './output')
   .action((sourceDir, options) => {
     console.log(chalk.blue('🔍 Extracting metadata from source code...'));
     
@@ -37,7 +78,8 @@ program
     // Run the Python script
     const pyshell = new PythonShell(path.join(SCRIPT_DIR, 'metadata_generator.py'), {
       args: [sourceDir, '--output-dir', options.outputDir],
-      mode: 'text'
+      mode: 'text',
+      pythonPath: pythonExecutable
     });
     
     pyshell.on('message', (message) => {
@@ -59,10 +101,10 @@ program
 // Upload embeddings command
 program
   .command('upload')
-  .description('Upload embeddings to OpenAI')
-  .option('-c, --config <file>', 'Path to config file', './config/assistant_config.yaml')
+  .description('Upload metadata embeddings to OpenAI for RAG context')
+  .option('-c, --config <file>', 'Path to YAML config file with OpenAI credentials (default: "./config/assistant_config.yaml")', './config/assistant_config.yaml')
   .option('-f, --force', 'Force processing of all files, even if unchanged')
-  .option('-v, --verbose', 'Print verbose output')
+  .option('-v, --verbose', 'Print verbose output including API calls and responses')
   .option('-q, --quiet', 'Suppress progress bar and non-error output')
   .action((options) => {
     console.log(chalk.blue('📤 Uploading embeddings to OpenAI...'));
@@ -84,7 +126,8 @@ program
     // Run the Python script
     const pyshell = new PythonShell(path.join(SCRIPT_DIR, 'upload_embeddings.py'), {
       args: args,
-      mode: 'text'
+      mode: 'text',
+      pythonPath: pythonExecutable
     });
     
     pyshell.on('message', (message) => {
@@ -105,7 +148,7 @@ program
 // Init command - create config files
 program
   .command('init')
-  .description('Initialize configuration for the Onboarding Assistant')
+  .description('Initialize configuration for the Onboarding Assistant by creating a YAML config file with your OpenAI credentials')
   .action(async () => {
     console.log(chalk.blue('🚀 Initializing Onboarding Assistant...'));
     
@@ -190,10 +233,10 @@ embedding_format: "openai"
 // All-in-one command
 program
   .command('all')
-  .description('Run the complete workflow: extract metadata and upload embeddings')
-  .argument('<source-dir>', 'Source directory to scan')
-  .option('-o, --output-dir <dir>', 'Output directory for metadata', './output')
-  .option('-c, --config <file>', 'Path to config file', './config/assistant_config.yaml')
+  .description('Run the complete workflow: extract metadata from source code and upload embeddings to OpenAI in one step')
+  .argument('<source-dir>', 'Source directory to scan for code files')
+  .option('-o, --output-dir <dir>', 'Output directory for metadata JSON files (default: "./output")', './output')
+  .option('-c, --config <file>', 'Path to YAML config file with OpenAI credentials (default: "./config/assistant_config.yaml")', './config/assistant_config.yaml')
   .option('-f, --force', 'Force processing of all files, even if unchanged')
   .action((sourceDir, options) => {
     console.log(chalk.blue('🚀 Running complete Onboarding Assistant workflow...'));
@@ -212,7 +255,8 @@ program
     // Run the metadata extraction script
     const extractPyshell = new PythonShell(path.join(SCRIPT_DIR, 'metadata_generator.py'), {
       args: [sourceDir, '--output-dir', options.outputDir],
-      mode: 'text'
+      mode: 'text',
+      pythonPath: pythonExecutable
     });
     
     extractPyshell.on('message', (message) => {
@@ -245,7 +289,8 @@ program
       // Run the upload script
       const uploadPyshell = new PythonShell(path.join(SCRIPT_DIR, 'upload_embeddings.py'), {
         args: args,
-        mode: 'text'
+        mode: 'text',
+        pythonPath: pythonExecutable
       });
       
       uploadPyshell.on('message', (message) => {
