@@ -19,6 +19,7 @@ npx onboarding-assistant-cli
 ## Prerequisites
 
 - Node.js 14+
+- Configuration file (optional) - YAML file with OpenAI credentials
 
 This tool is pure JavaScript and does not require Python or any other dependencies.
 
@@ -64,30 +65,38 @@ These files are organized in the output directory as follows:
 Generate context files from your frontend source code:
 
 ```bash
-npx onboarding-assistant generate-frontend-context
+npx onboarding-assistant generate-frontend -s <source-dir> -o <output-dir> -c <config-file>
 ```
 
-This interactive command will:
-- Prompt you to select your frontend framework (currently supports Vue)
-- Ask for the path to your source files
-- Ask for the output directory
+Or use the interactive mode:
+
+```bash
+npx onboarding-assistant generate-frontend
+```
+
+This command will:
 - Process all Vue files, extracting routes from router configuration when possible
 - Output each file as a .txt file in the output/routes/ directory with appropriate headers
+- Use the configuration from your YAML file for OpenAI credentials (if provided)
 
 ### Generate Backend Context
 
 Generate context files from your backend model files:
 
 ```bash
-npx onboarding-assistant generate-backend-context
+npx onboarding-assistant generate-backend -s <source-dir> -o <output-dir> -c <config-file>
 ```
 
-This interactive command will:
-- Prompt you to select your ORM (currently supports Entity Framework)
-- Ask for the path to your model files
-- Ask for the output directory
+Or use the interactive mode:
+
+```bash
+npx onboarding-assistant generate-backend
+```
+
+This command will:
 - Process all model files, detecting Entity Framework models
 - Output each model as a .txt file in the output/models/ directory with appropriate headers
+- Use the configuration from your YAML file for OpenAI credentials (if provided)
 
 ## Using with OpenAI Assistant
 
@@ -121,13 +130,13 @@ Here's the workflow for setting up and using the Onboarding Assistant:
    - Enable the Retrieval feature in the Assistant settings
 
 2. **Generate frontend context**
-   - Run `npx onboarding-assistant generate-frontend-context`
-   - Follow the prompts to select your frontend framework and paths
+   - Run `npx onboarding-assistant generate-frontend -s <source-dir> -o <output-dir> -c <config-file>`
+   - Or use the interactive mode and follow the prompts
    - This generates .txt files with the full source code of your frontend components
 
 3. **Generate backend context (if applicable)**
-   - Run `npx onboarding-assistant generate-backend-context`
-   - Follow the prompts to select your ORM and paths
+   - Run `npx onboarding-assistant generate-backend -s <source-dir> -o <output-dir> -c <config-file>`
+   - Or use the interactive mode and follow the prompts
    - This generates .txt files with the full source code of your backend models
 
 4. **Upload the generated .txt files to your OpenAI Assistant**
@@ -269,3 +278,15 @@ If you encounter issues:
 - If files are not being processed correctly, check the console output for specific errors
 
 For more detailed information, see the [Onboarding Assistant documentation](https://github.com/jsatlien/onboarding-assistant).
+
+## Configuration File
+
+You can use a YAML configuration file to provide your OpenAI credentials:
+
+```yaml
+openai:
+  api_key: "your-api-key"
+  assistant_id: "your-assistant-id"
+```
+
+This file is optional and only needed if you plan to use additional features that interact directly with the OpenAI API.
