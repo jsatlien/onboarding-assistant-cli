@@ -52,6 +52,10 @@ if (!pythonExecutable) {
   process.exit(1);
 }
 
+// Import the new context generators
+const { generateVueContext } = require('../lib/frontend-context');
+const { generateEFModelContext } = require('../lib/backend-context');
+
 // Define the CLI program
 program
   .name('onboarding-assistant')
@@ -307,6 +311,120 @@ program
         console.log(chalk.green('\n✅ Onboarding Assistant workflow completed successfully!'));
       });
     });
+  });
+
+// Generate frontend context command
+program
+  .command('generate-frontend-context')
+  .description('Generate context files from frontend source code for embedding')
+  .action(async () => {
+    console.log(chalk.blue('🔍 Generating frontend context for embeddings...'));
+    
+    // Prompt for configuration
+    const answers = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'frontendType',
+        message: 'Which frontend framework is your app using?',
+        choices: ['Vue'],
+        default: 'Vue'
+      },
+      {
+        type: 'input',
+        name: 'sourcePath',
+        message: 'Enter the path to your Vue source files:',
+        validate: (input) => {
+          if (!input) return 'Path cannot be empty';
+          if (!fs.existsSync(input)) return 'Path does not exist';
+          return true;
+        }
+      },
+      {
+        type: 'input',
+        name: 'outputPath',
+        message: 'Enter the output directory for embedding context:',
+        default: './output'
+      }
+    ]);
+    
+    const spinner = ora('Processing Vue files...').start();
+    
+    try {
+      // Create output directory if it doesn't exist
+      if (!fs.existsSync(answers.outputPath)) {
+        fs.mkdirSync(answers.outputPath, { recursive: true });
+      }
+      
+      // Generate context based on frontend type
+      let filesProcessed = 0;
+      
+      if (answers.frontendType === 'Vue') {
+        filesProcessed = await generateVueContext(answers.sourcePath, answers.outputPath);
+      }
+      
+      spinner.succeed(chalk.green(`✅ Frontend context generation complete! Processed ${filesProcessed} files.`));
+      console.log(chalk.blue(`Output saved to: ${path.join(answers.outputPath, 'routes')}`));
+    } catch (error) {
+      spinner.fail(chalk.red(`Error generating frontend context: ${error.message}`));
+      process.exit(1);
+    }
+  });
+
+// Generate backend context command
+program
+  .command('generate-backend-context')
+  .description('Generate context files from backend model files for embedding')
+  .action(async () => {
+    console.log(chalk.blue('🔍 Generating backend context for embeddings...'));
+    
+    // Prompt for configuration
+    const answers = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'ormType',
+        message: 'Which backend ORM are you using?',
+        choices: ['Entity Framework'],
+        default: 'Entity Framework'
+      },
+      {
+        type: 'input',
+        name: 'modelsPath',
+        message: 'Enter the path to your Entity Framework model files:',
+        validate: (input) => {
+          if (!input) return 'Path cannot be empty';
+          if (!fs.existsSync(input)) return 'Path does not exist';
+          return true;
+        }
+      },
+      {
+        type: 'input',
+        name: 'outputPath',
+        message: 'Enter the output directory for model embedding context:',
+        default: './output'
+      }
+    ]);
+    
+    const spinner = ora('Processing model files...').start();
+    
+    try {
+      // Create output directory if it doesn't exist
+      if (!fs.existsSync(answers.outputPath)) {
+        fs.mkdirSync(answers.outputPath, { recursive: true });
+      }
+      
+      // Generate context based on ORM type
+      let filesProcessed = 0;
+      
+      if (answers.ormType === 'Entity Framework') {
+        filesProcessed = await generateEFModelContext(answers.modelsPath, answers.outputPath);
+      }
+      
+      spinner.succeed(chalk.green(`✅ Backend context generation complete! Processed ${filesProcessed} files.`));
+      console.log(chalk.blue(`Output saved to: ${path.join(answers.outputPath, 'models')}`));
+    } catch (error) {
+      spinner.fail(chalk.red(`Error generating backend context: ${error.message}`));
+      process.exit(1);
+    }
   });
 
 // Parse command line arguments

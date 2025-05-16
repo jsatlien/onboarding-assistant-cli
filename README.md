@@ -19,10 +19,9 @@ npx onboarding-assistant-cli
 ## Prerequisites
 
 - Node.js 14+
-- Python 3.6+
-- OpenAI API key and Assistant ID
+- OpenAI API key and Assistant ID (for embedding upload)
 
-The package will check for Python and install required Python dependencies during setup.
+**Note**: Python 3.6+ is only required for the legacy commands. The new recommended commands (`generate-frontend-context` and `generate-backend-context`) are pure JavaScript and do not require Python.
 
 ## Configuration
 
@@ -48,7 +47,43 @@ embedding_format: "openai"  # Future: pinecone, weaviate
 
 ## Commands
 
-### Initialize Configuration
+### New Commands (Recommended)
+
+#### Generate Frontend Context
+
+Generate embedding-ready context files from your frontend source code:
+
+```bash
+npx onboarding-assistant generate-frontend-context
+```
+
+This interactive command will:
+- Prompt you to select your frontend framework (currently supports Vue)
+- Ask for the path to your source files
+- Ask for the output directory
+- Process all Vue files, extracting routes from router configuration when possible
+- Output each file as a .txt file in the output/routes/ directory with appropriate headers
+
+#### Generate Backend Context
+
+Generate embedding-ready context files from your backend model files:
+
+```bash
+npx onboarding-assistant generate-backend-context
+```
+
+This interactive command will:
+- Prompt you to select your ORM (currently supports Entity Framework)
+- Ask for the path to your model files
+- Ask for the output directory
+- Process all model files, detecting Entity Framework models
+- Output each model as a .txt file in the output/models/ directory with appropriate headers
+
+### Legacy Commands
+
+> **Note**: The following commands use the older metadata-based approach and require Python. The new commands above are recommended instead.
+
+#### Initialize Configuration
 
 Set up your OpenAI API key and Assistant ID:
 
@@ -61,7 +96,7 @@ This will:
 - Prompt for your OpenAI API key and Assistant ID
 - Generate a configuration file
 
-### Extract Metadata
+#### Extract Metadata
 
 Extract metadata from your source code:
 
@@ -73,7 +108,7 @@ Options:
 - `<source-dir>`: Directory containing your source code (required)
 - `--output-dir`, `-o`: Directory where metadata will be saved (default: "./output")
 
-### Upload Embeddings
+#### Upload Embeddings
 
 Upload embeddings to OpenAI:
 
@@ -87,7 +122,7 @@ Options:
 - `--verbose`, `-v`: Print verbose output
 - `--quiet`, `-q`: Suppress progress bar and non-error output
 
-### All-in-One Workflow
+#### All-in-One Workflow
 
 Run the complete workflow (extract metadata and upload embeddings):
 
@@ -99,11 +134,40 @@ This combines the extract and upload commands in one step.
 
 ## Complete Workflow
 
-Here's the complete workflow for setting up and using the Onboarding Assistant:
+### Recommended Workflow (New)
+
+Here's the recommended workflow for setting up and using the Onboarding Assistant:
 
 1. **Set up an OpenAI Assistant**
    - Create an OpenAI account and get an API key
    - Create a new Assistant with appropriate instructions (see [OpenAI Assistant Setup](#openai-assistant-setup))
+   - Copy the Assistant ID
+
+2. **Generate frontend context**
+   - Run `npx onboarding-assistant generate-frontend-context`
+   - Follow the prompts to select your frontend framework and paths
+   - This generates .txt files with the full source code of your frontend components
+
+3. **Generate backend context (if applicable)**
+   - Run `npx onboarding-assistant generate-backend-context`
+   - Follow the prompts to select your ORM and paths
+   - This generates .txt files with the full source code of your backend models
+
+4. **Upload the generated .txt files to your OpenAI Assistant**
+   - Go to your Assistant in the OpenAI platform
+   - Upload the generated .txt files from the output/routes/ and output/models/ directories
+   - These files will be used as context for your Assistant
+
+5. **Integrate the Onboarding Assistant into your application**
+   - Follow the integration instructions in the [main project documentation](https://github.com/jsatlien/onboarding-assistant)
+
+### Legacy Workflow
+
+The legacy workflow using metadata extraction and Python:
+
+1. **Set up an OpenAI Assistant**
+   - Create an OpenAI account and get an API key
+   - Create a new Assistant with appropriate instructions
    - Copy the Assistant ID
 
 2. **Configure the tools**
@@ -118,12 +182,30 @@ Here's the complete workflow for setting up and using the Onboarding Assistant:
    - Run `npx onboarding-assistant upload --config ./config/assistant_config.yaml`
    - This creates embeddings for each route and stores them locally
 
-5. **Integrate the Onboarding Assistant into your application**
-   - Follow the integration instructions in the [main project documentation](https://github.com/jsatlien/onboarding-assistant)
-
 ## How It Works
 
-This CLI tool is a Node.js wrapper around Python scripts that:
+### New Approach (Recommended)
+
+The new commands use a direct source-to-text approach:
+
+1. **Scan your source code files**
+   - Recursively finds all Vue files or C# model files in the specified directory
+   - For Vue files, attempts to extract routes from router configuration files
+   - For C# files, identifies Entity Framework models using common patterns
+
+2. **Generate context files**
+   - Creates .txt files with the full source code of each file
+   - Adds minimal header comments with file path and route/model information
+   - Preserves original formatting and indentation
+
+3. **Output organized files**
+   - Frontend files are saved to output/routes/ with kebab-case filenames
+   - Backend files are saved to output/models/ with kebab-case filenames
+   - Files are ready to be uploaded directly to your OpenAI Assistant
+
+### Legacy Approach
+
+The legacy commands use Python scripts that:
 
 1. **Scan your source code to extract contextual metadata**
    - Analyzes various file types (.vue, .cs, .json, etc.)
